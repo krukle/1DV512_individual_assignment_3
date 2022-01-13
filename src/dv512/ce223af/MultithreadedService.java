@@ -27,10 +27,10 @@ import java.util.concurrent.TimeoutException;
 // Additionally, please remember that you are not allowed to use any third-party libraries
 
 public class MultithreadedService {
-  List<CallableTask> allTasks = new ArrayList<>();
-  List<CallableTask> completedTasks = new ArrayList<>();
-  List<CallableTask> interruptedTasks = new ArrayList<>();
-  List<CallableTask> waitingTasks = new ArrayList<>();
+  List<Task> allTasks = new ArrayList<>();
+  List<Task> completedTasks = new ArrayList<>();
+  List<Task> interruptedTasks = new ArrayList<>();
+  List<Task> waitingTasks = new ArrayList<>();
 
     // TODO: implement a nested public class titled Task here
     // which must have an integer ID and specified burst time (duration) in milliseconds,
@@ -40,12 +40,12 @@ public class MultithreadedService {
     // it is expected to simply go to sleep every X milliseconds (specified below)
 
 
+    /*
   public class CallableTask implements Callable<HashMap<String,Integer>> {
     int id;
     long burstTimeMs;
     long sleepTimeMs;
     HashMap<String,Integer> attributes = new HashMap<>();
-
     public CallableTask(int id, long burstTimeMs, long sleepTimeMs) {
       attributes.put("id", id);
       attributes.put("bursttime", (int) burstTimeMs);
@@ -70,11 +70,13 @@ public class MultithreadedService {
     }
 
   }
-/*
+*/
   public class Task implements Runnable {
     int id;
     long burstTimeMs;
     long sleepTimeMs;
+    long startTime = 0;
+    long finishTime = 0;
 
     public Task(int id, long burstTimeMs, long sleepTimeMs) {
       this.id = id;
@@ -84,6 +86,7 @@ public class MultithreadedService {
 
     @Override
     public void run() {
+      startTime = System.currentTimeMillis();
       try {
         System.out.println("Running Task " + id);
         while (burstTimeMs > 0) {
@@ -92,17 +95,15 @@ public class MultithreadedService {
         }
         System.out.println("Task " + id + " done.");
       } catch (InterruptedException e) {
-
       }
-      
+      finishTime = System.currentTimeMillis();
     }
   }
-*/
+
     // Random number generator that must be used for the simulation
 	Random rng;
   ExecutorService pool;
   long simulationStartTime;
-  List<Future<HashMap<String,Integer>>> futures = new ArrayList<>();
 
     // ... add further fields, methods, and even classes, if necessary
 
@@ -114,7 +115,6 @@ public class MultithreadedService {
 	public void reset() {
 		// TODO - remove any information from the previous simulation, if necessary
     waitingTasks.clear();
-    futures.clear();
     allTasks.clear();
     interruptedTasks.clear();
   }
@@ -131,9 +131,9 @@ public class MultithreadedService {
         pool = Executors.newFixedThreadPool(numThreads);
 
         for (int i = 0; i < numTasks; i++) {
-          CallableTask callableTask = new CallableTask(i, rng.nextLong(maxBurstTimeMs-minBurstTimeMs)+minBurstTimeMs, sleepTimeMs);
-          allTasks.add(callableTask);
-          futures.add(pool.submit(callableTask));
+          Task task = new Task(i, rng.nextLong(maxBurstTimeMs-minBurstTimeMs)+minBurstTimeMs, sleepTimeMs);
+          allTasks.add(task);
+          pool.execute(task);
         }
 
         pool.shutdown();
@@ -167,43 +167,19 @@ public class MultithreadedService {
 
 
     public void printResults() {
-        interruptedTasks.addAll(allTasks);
         System.out.println("Completed tasks:");
-        futures.forEach( future -> {
-          if (future.isDone()) {
-            try {
-              HashMap<String,Integer> result = future.get(0, TimeUnit.SECONDS);
-              allTasks.forEach(task -> {
-                if (task.id == result.get("id")) {
-                  interruptedTasks.remove(task);
-                }
-              });
-              result.entrySet().forEach( entry -> {
-                System.out.println(entry.getKey() + " = " + entry.getValue());
-              });
-            } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            }
-          }
-        });
+        
         
         // 1. For each *completed* task, print its ID, burst time (duration),
         // its start time (moment since the start of the simulation), and finish time
         
         System.out.println("Interrupted tasks:");
-        for (CallableTask callableTask : interruptedTasks) {
-          if (callableTask.attributes.get("waiting") == 0) {
-            System.out.println(callableTask.attributes.get("id"));
-          } else {
-            waitingTasks.add(callableTask);
-          }
-        }
+     
         // 2. Afterwards, print the list of tasks IDs for the tasks which were currently
         // executing when the simulation was finished/interrupted
         
         System.out.println("Waiting tasks:");
-        for (CallableTask callableTask : waitingTasks) {
-          System.out.println(callableTask.attributes.get("id"));
-        }
+   
         // 3. Finally, print the list of tasks IDs for the tasks which were waiting for execution,
         // but were never started as the simulation was finished/interrupted
 	}
