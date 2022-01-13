@@ -204,7 +204,6 @@ public class MultithreadedService {
         for (CallableTask callableTask : waitingTasks) {
           System.out.println(callableTask.attributes.get("id"));
         }
-        System.out.println("Done");
         // 3. Finally, print the list of tasks IDs for the tasks which were waiting for execution,
         // but were never started as the simulation was finished/interrupted
 	}
