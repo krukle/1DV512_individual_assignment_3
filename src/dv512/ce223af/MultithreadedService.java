@@ -1,6 +1,7 @@
 package dv512.ce223af;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
@@ -28,9 +29,10 @@ import java.util.concurrent.TimeoutException;
 
 public class MultithreadedService {
   List<Task> allTasks = new ArrayList<>();
-  List<Task> completedTasks = new ArrayList<>();
   List<Task> interruptedTasks = new ArrayList<>();
   List<Task> waitingTasks = new ArrayList<>();
+  List<Task> completedTasks = new ArrayList<>();
+
 
     // TODO: implement a nested public class titled Task here
     // which must have an integer ID and specified burst time (duration) in milliseconds,
@@ -75,8 +77,9 @@ public class MultithreadedService {
     int id;
     long burstTimeMs;
     long sleepTimeMs;
-    long startTime = 0;
-    long finishTime = 0;
+    long startTime;
+    long finishTime;
+    long executionTime = 0;
 
     public Task(int id, long burstTimeMs, long sleepTimeMs) {
       this.id = id;
@@ -89,14 +92,14 @@ public class MultithreadedService {
       startTime = System.currentTimeMillis();
       try {
         System.out.println("Running Task " + id);
-        while (burstTimeMs > 0) {
+        while (executionTime <= burstTimeMs) {
           Thread.sleep(sleepTimeMs); 
-          burstTimeMs -= sleepTimeMs;
+          executionTime += sleepTimeMs;
         }
         System.out.println("Task " + id + " done.");
+        finishTime = System.currentTimeMillis();
       } catch (InterruptedException e) {
       }
-      finishTime = System.currentTimeMillis();
     }
   }
 
@@ -131,7 +134,7 @@ public class MultithreadedService {
         pool = Executors.newFixedThreadPool(numThreads);
 
         for (int i = 0; i < numTasks; i++) {
-          Task task = new Task(i, rng.nextLong(maxBurstTimeMs-minBurstTimeMs)+minBurstTimeMs, sleepTimeMs);
+          Task task = new Task(i, rng.nextInt((int) (maxBurstTimeMs-minBurstTimeMs))+minBurstTimeMs, sleepTimeMs);
           allTasks.add(task);
           pool.execute(task);
         }
@@ -139,13 +142,13 @@ public class MultithreadedService {
         pool.shutdown();
         try {
           if (!pool.awaitTermination(totalSimulationTimeMs, TimeUnit.MILLISECONDS)) {
-            pool.shutdownNow();
+            waitingTasks.addAll((Collection<? extends Task>) pool.shutdownNow());
             if (!pool.awaitTermination(totalSimulationTimeMs, TimeUnit.MILLISECONDS)) {
               System.err.println("Pool did not terminate");
             }
           }
         } catch (InterruptedException e) {
-          pool.shutdownNow();
+          waitingTasks.addAll((Collection<? extends Task>) pool.shutdownNow());
           Thread.currentThread().interrupt();
         }
        
@@ -165,9 +168,21 @@ public class MultithreadedService {
 
     }
 
+    public void generateResults() {
+    }
+
 
     public void printResults() {
         System.out.println("Completed tasks:");
+        allTasks.forEach(task -> {
+          System.out.println("ID " + task.id);
+          System.out.println("Burst time " + task.burstTimeMs);
+          System.out.println("Finish time " + task.finishTime);
+          System.out.println("Sleep time " + task.sleepTimeMs);
+          System.out.println("Start time " + task.startTime);
+          System.out.println("Execution time " + task.executionTime);
+          System.out.println();
+        });
         
         
         // 1. For each *completed* task, print its ID, burst time (duration),
