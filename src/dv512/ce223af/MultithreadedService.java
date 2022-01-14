@@ -1,8 +1,10 @@
 package dv512.ce223af;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -22,10 +24,10 @@ import java.util.concurrent.TimeUnit;
 // Additionally, please remember that you are not allowed to use any third-party libraries
 
 public class MultithreadedService {
-  List<Task> allTasks = new ArrayList<>();
+  List<Task> allTasks         = new ArrayList<>();
   List<Task> interruptedTasks = new ArrayList<>();
-  List<Task> waitingTasks = new ArrayList<>();
-  List<Task> completedTasks = new ArrayList<>();
+  List<Task> completedTasks   = new ArrayList<>();
+  Set<Task> waitingTasks      = new LinkedHashSet<>();
 
     // which must have an integer ID and specified burst time (duration) in milliseconds,
     // see below
@@ -34,15 +36,15 @@ public class MultithreadedService {
     // it is expected to simply go to sleep every X milliseconds (specified below)
 
   public class Task implements Runnable {
-    int id;
+    int  id;
     long burstTimeMs;
     long sleepTimeMs;
     long startTime;
-    long finishTime;
+    long finishTime    = 0;
     long executionTime = 0;
 
     public Task(int id, long burstTimeMs, long sleepTimeMs) {
-      this.id = id;
+      this.id          = id;
       this.burstTimeMs = burstTimeMs;
       this.sleepTimeMs = sleepTimeMs;
     }
@@ -62,9 +64,9 @@ public class MultithreadedService {
   }
 
     // Random number generator that must be used for the simulation
-	Random rng;
+	Random          rng;
   ExecutorService pool;
-  long simulationStartTime;
+  long            simulationStartTime;
 
     // ... add further fields, methods, and even classes, if necessary
 
@@ -109,7 +111,6 @@ public class MultithreadedService {
           waitingTasks.addAll((List<? extends Task>) pool.shutdownNow());
           Thread.currentThread().interrupt();
         }
-       
 
         // 1. Run the simulation for the specified time, totalSimulationTimeMs
         // 2. While the simulation is running, use a fixed thread pool with numThreads
@@ -125,21 +126,20 @@ public class MultithreadedService {
 
     }
 
-    public void generateResults() {
-      allTasks.forEach(task -> {
-        if (task.executionTime >= task.burstTimeMs) {
-          completedTasks.add(task);
-        } else if (task.executionTime == 0) {
-          waitingTasks.add(task);
-        } else {
+    public void collectResults() {
+      completedTasks.addAll(allTasks);
+      completedTasks.removeAll(waitingTasks);
+      completedTasks.forEach(task -> {
+        if (task.finishTime == 0) {
           interruptedTasks.add(task);
         }
       });
+      completedTasks.removeAll(interruptedTasks);
     }
 
 
     public void printResults() {
-      generateResults();
+      collectResults();
       System.out.println("Completed tasks:");   
       System.out.println();  
 
@@ -174,9 +174,6 @@ public class MultithreadedService {
       // 3. Finally, print the list of tasks IDs for the tasks which were waiting for execution,
       // but were never started as the simulation was finished/interrupted
 	}
-
-
-
 
     // If the implementation requires your code to throw some exceptions, 
     // you are allowed to add those to the signature of this method
